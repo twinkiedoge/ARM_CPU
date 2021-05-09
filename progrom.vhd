@@ -29,7 +29,7 @@ begin
 		rom_content(i) := To_StdLogicVector(bv);
 	end loop;
 	return rom_content;
-end function; 
+end; 
 
 signal ROM : ROM_type := init_rom_bin;
 
