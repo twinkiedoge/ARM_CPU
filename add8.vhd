@@ -5,7 +5,7 @@ use IEE.numeric_std.all;
 entity add8 is
     port (
       x : in unsigned(31 downto 0);
-      xplus8 : out unsigned(31 downto 0);
+      xplus8 : out unsigned(31 downto 0)
     );
 end;
  
