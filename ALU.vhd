@@ -32,6 +32,7 @@ begin
 		flags(2) <= ('1') when (resultsig = (resultsig'range => '0')) else ('0'); -- zero
 		flags(3) <= ('1') when (to_integer(signed(resultsig)) < 0) else ('0'); -- negative
      
+     
 		--carry
 		--SUB
         if command = "0010" then
@@ -79,16 +80,25 @@ begin
              end if;
              
              
+        --ADD
 		elsif command = "0100" then
-		if ((to_integer(signed(srcA)) + to_integer(signed(srcB))) > 2147483646) then
-				flags(1) <= '1';
-			else 
-				flags(1) <= '0';
-			end if;
-		else
-			flags(1) <= '0';
-		end if;  
+			if( srcA(31) /= srcB(31) ) then
+            	flags(1) <= '0';
+            elsif( srcA(31) = '1' ) then
+            	carrysigsign <= signed(srcA(31) & srcA) + signed(srcB(31) & srcB);
+                if(carrysigsign(31) = '0') then
+                	flags(1) <= '1';
+                else
+                	flags(1) <= '0';
+                end if;
+            else
+            	flags(1) <= '0';
+            end if;
+		else 
+        	flags(1) <= '0';
+        end if;  
 		
+        
 		--overflow
 		--SUB
         if (command = "0010") then
@@ -102,6 +112,7 @@ begin
 				flags(0) <= '0';
 			end if;
 
+
 		--RSB
 		elsif (command = "0011") then
 			if( srcA(31) /= srcB(31) ) then
@@ -113,10 +124,11 @@ begin
             else
 				flags(0) <= '0';
 			end if;
-            
+      
+      
 		--ADD	
 		elsif (command = "0100") then
-			if( srcA(31) /= srcB(31) ) then
+			if( srcA(31) = srcB(31) ) then
 				if( resultsig(31) /= srcB(31) ) then
 					flags(0) <= '1';
 				else
