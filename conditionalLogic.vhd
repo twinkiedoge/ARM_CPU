@@ -24,7 +24,30 @@ signal CondEx : std_logic;
 signal Flags : std_logic_vector(3 downto 0) := ALUFlags;
 
 begin    	
-	--saving flags
+	--checking condition
+	CondEx <= '1' when ((cond = "0000" and ALUFlags(2) = '1') or
+	                   (cond = "0010" and ALUFlags(1) = '1') or
+	                   (cond = "0100" and ALUFlags(3) = '1') or
+	                   (cond = "0110" and ALUFlags(0) = '1') or
+                           (cond = "1000" and (ALUFlags(2) = '0' and ALUFlags(1) = '1')) or
+                           (cond = "1010" and ((ALUFlags(3) = '1' and ALUFlags(0) = '1') or (ALUFlags(3) = '0' and ALUFlags(0) = '0'))) or
+                           (cond = "1100" and (ALUFlags(2) = '0' and ((ALUFlags(3) = '1' and ALUFlags(0) = '1') or (ALUFlags(3) = '0' and ALUFlags(0) = '0')))) or
+                           --(cond = "1110") or    --AL (always) has no CPSR conditions?
+                           (cond = "0001" and ALUFlags(2) = '0') or
+                           (cond = "0011" and ALUFlags(1) = '0') or
+                           (cond = "0101" and ALUFlags(3) = '0') or
+                           (cond = "0111" and ALUFlags(0) = '0') or
+                           (cond = "1001" and (ALUFlags(2) = '1' or ALUFlags(1) = '0')) or
+                           (cond = "1011" and ((ALUFlags(3) = '1' and ALUFlags(0) = '0') or (ALUFlags(3) = '0' and ALUFlags(0) = '1'))) or
+                           (cond = "1101" and (ALUFlags(2) = '1' or ((ALUFlags(3) = '1' and ALUFlags(0) = '0') or (ALUFlags(3) = '0' and ALUFlags(0) = '1'))))) else '0';
+                
+	--disables memory, register, and PC if condition is not
+	--       executed, else sends through the info
+	memWrite <= memW and CondEx;
+	regWrite <= regW and CondEx;
+	PCSrc <= PCS and CondEx;
+    	
+    	--saving flags (CPSR)
 	process(clk)
 	begin 
 	    	if (rising_edge(clk)) then 
@@ -36,30 +59,6 @@ begin
 	            	end if;
 	        end if;
 	end process;
-	
-	--checking condition
-	CondEx <= '1' when ((cond = "0000" and Flags(2)) or
-                (cond = "0010" and Flags(1)) or
-                (cond = "0100" and Flags(3)) or
-                (cond = "0110" and Flags(0)) or
-                (cond = "1000" and (not Flags(2) and Flags(1))) or
-                (cond = "1010" and not(ALUFlags(3) xor Flags(0))) or
-                (cond = "1100" and (Flags(2) = '0' and not(Flags(3) xor Flags(0)))) or
-                --(cond = "1110") or    --AL (always) has no CPSR conditions?
-                (cond = "0001" and not Flags(2)) or
-                (cond = "0011" and not Flags(1)) or
-                (cond = "0101" and not Flags(3)) or
-                (cond = "0111" and not Flags(0)) or
-                (cond = "1001" and (Flags(2) or not Flags(1))) or
-                (cond = "1011" and (Flags(3) xor Flags(0))) or
-                (cond = "1101" and (Flags(2) or (Flags(3) xor Flags(0))))) else '0';
-                
-	--disables memory, register, and PC if condition is not
-	--       executed, else sends through the info
-	memWrite <= memW and CondEx;
-	regWrite <= regW and CondEx;
-	PCSrc <= PCS and CondEx;
-    
     
     
     -- flagW - tells if/what aluflags should be saved
