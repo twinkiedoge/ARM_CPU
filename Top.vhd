@@ -96,6 +96,8 @@ component end;
 signal PCsig: unsigned(31 downto 0);
 signal Instr: std_logic_vector(31 downto 0);
 signal RA1: std_logic_vector(3 downto 0);
+signal RA2: std_logic_vector(3 downto 0);
+signal RA3: std_logic_vector(3 downto 0);
 signal immsig: std_logic_vector(11 downto 0);
 signal ExtImm: std_logic_vector(31 downto 0);
 signal RD1sig: std_logic_vector(31 downto 0);
@@ -103,35 +105,61 @@ signal ALUResult: std_logic_vector(31 downto 0);
 signal read_datasig: unsigned(31 downto 0);
 signal PCPlus4: std_logic_vector(31 downto 0);
 signal PCPlus8: std_logic_vector(31 downto 0);
+signal WriteData: unsigned(31 downto 0);
+
+signal srcBsig: std_logic_vector(31 downto 0);
 
 
 --control
 signal PCSrc: std_logic;
+signal MemtoReg: std_logic;
+signal RegSrc: std_logic;
+signal ALUSrc: std_logic;
 
 
 
 begin
 
-ALUinst: ALU port map(srcA => RD1sig, srcB => ExtImm, command => , result => ALUResult, flags => );
+ALUinst: ALU port map(srcA => RD1sig, srcB => srcBsig, command => , result => ALUResult, flags => );
 programcounterinst: programcounter port map(clk =>, reset =>, branch =>, branchAddr => , pc => PCsig);
-regfileinst: regfile port map(clk =>, A1 => RA1, A2 =>, A3 =>, WE3 => , R15 => PCPlus8, RD1 => RD1sig, RD2 =>, WD3 => read_datasig);
+regfileinst: regfile port map(clk =>, A1 => RA1, A2 => , A3 => RA3, WE3 => , R15 => PCPlus8, RD1 => RD1sig, RD2 => WriteData, WD3 => read_datasig);
 progrominst: progrom port map(addr => PCsig, data => Instr); --assuming "instruction memory" in book is progrom
 immextendinst: immextend port map(imm => immsig, immout => ExtImm);
 add8inst: add8 port map(x => PCPlus4, xplus8 => PCPlus8);
 add4inst: add4 port map(x => PCsig, xplus4 => PCPlus4);
 decoderinst: decoder port map(instruction =>, aluControl =>, addrA =>, addrB =>, addrC =>, useImm =>);
-raminst: ram port map(clk =>, write_enable =>, addr => ALUResult, write_data =>, read_data => read_datasig)
+raminst: ram port map(clk =>, write_enable =>, addr => ALUResult, write_data => WriteData, read_data => read_datasig)
 
 RA1 => Instr(19 downto 16);
+RA3 => Instr(15 downto 12);
 immsig => Instr(11 downto 0);
 
-
-process(clk)
-	begin
+--so far at figure 7.11
+process(all)
+	
+    begin
     	if PCSrc = '1' then
-        	branchAddr => read_datasig;
+        	if MemtoReg = '1' then
+            	branchAddr => read_datasig;
+            else
+            	branchAddr => ALUResult;
+            end if;
         else
-         	branchAddr => PCPlus4;
+            branchAddr => PCPlus4;
         end if;
+        
+        
+        if RegSrc = '1' then
+        	RA2 => RA3;
+        else
+        	RA2 => Instr(3 downto 0);
+        end if;
+        
+        if ALUSrc = '1' then
+        	srcBsig => ExtImm;
+        else
+        	srcBsig => WriteData;
+        end if;
+        	
     end process;
 end;
