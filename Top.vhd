@@ -72,14 +72,15 @@ port(
 	func : in std_logic_vector(5 downto 0);
     op : in std_logic_vector(1 downto 0);
     Rd : in std_logic_vector(3 downto 0);
+    B : out std_logic;
     memtoReg : out std_logic;
     memW : out std_logic;
     regW : out std_logic;
     ALUSrc : out std_logic;
     immSrc : out std_logic_vector(1 downto 0);
     ALUOp : out std_logic;
-    PCS : out std_logic;
     regSrc : out std_logic_vector(1 downto 0);
+    PCS : out std_logic
 );
 end component;
 
@@ -117,9 +118,16 @@ port(
 );
 component end;
 
+component branch is
+port(
+	PC8 : in std_logic_vector(31 downto 0);
+	instruction : in std_logic_vector(31 downto 0);
+	PC : out std_logic_vector(31 downto 0)
+);
+end component;
 
 
---internal (specced by tecxtbook)
+--internal (specced by textbook)
 signal PCsig: unsigned(31 downto 0);
 signal Instr: std_logic_vector(31 downto 0);
 signal RA1: std_logic_vector(3 downto 0);
@@ -146,6 +154,8 @@ signal FlagWsig :  std_logic_vector(1 downto 0);
 signal memWsig : std_logic;
 signal regWsig : std_logic;
 signal PCSsig: std_logic;
+signal branchAddr : std_logic_vector(31 downto 0);
+signal reset : std_vector := '1';
 
 --control
 signal PCSrcsig: std_logic;
@@ -156,23 +166,33 @@ signal ImmSrcsig: std_logic_vector(1 downto 0);
 signal regWritesig: std_logic;
 signal memWritesig : std_logic;
 signal regSrcsig: std_logic_vector(1 downto 0);
- 
+
 
 
 
 begin
 
 ALUinst: ALU port map(srcA => RD1sig, srcB => srcBsig, command => ALUControlsig, result => ALUResult, flags => ALUFlags);
-programcounterinst: programcounter port map(clk => clk, reset =>, branch =>, branchAddr => , pc => PCsig);
+
+programcounterinst: programcounter port map(clk => clk, reset => reset, branch => B, branchAddr => , pc => PCsig);
+
 regfileinst: regfile port map(clk =>, A1 => RA1, A2 => , A3 => RA3, WE3 => regWritesig, R15 => PCPlus8, RD1 => RD1sig, RD2 => WriteData, WD3 => read_datasig);
+
 progrominst: progrom port map(addr => PCsig, data => Instr); --assuming "instruction memory" in book is progrom
+
 immextendinst: immextend port map(imm => immsig, ImmSrc => ImmSrcsig, immout => ExtImm);
+
 add8inst: add8 port map(x => PCsig, xplus8 => PCPlus8);
+
 raminst: ram port map(clk =>, write_enable => memWritesig, addr => ALUResult, write_data => WriteData, read_data => read_datasig);
+
 conditionalLogicinst: conditionalLogic port map(cond => condsig, ALUFlags => ALUFlags, clk => clk, FlagW => FlagWsig, memW => memWsig, regW => regWsig, PCS => PCSsig, PCSrc => PCSrcsig, memWrite => memWritesig, regWrite => regWritesig);
+
 ALUDecoderinst: ALUDecoder port map(func => funct, ALUOp => ALUOpsig, ALUControl => ALUControlsig, FlagW => FlagWsig); 
+
 mainDecoderinst: mainDecoder port map(func => funct, op => Opsig, Rd => Rdsig, memtoReg => MemtoRegsig, memW => memWsig, regW => regWsig, ALUSrc => ALUSrcsig, immSrc => ImmSrcsig, ALUOp => ALUOpsig, PCS =>PCSsig);
 
+branchinst : branch port map(PC8 => PCPlus8, instruction => Instruc, PC => branchAddr);
 
 RA3 => Instr(15 downto 12);
 immsig => Instr(23 downto 0);
@@ -183,30 +203,31 @@ Rdsig => Instr(15 downto 12);
 
 --so far at figure 7.11
 process(all)
-	
     begin
+    reset = '0'; --turns of pc reset at the begining
+    	--program counter input
     	if PCSrcsig = '1' then
-        	if MemtoRegsig = '1' then
+            if MemtoRegsig = '1' then
             	branchAddr => read_datasig;
             else
             	branchAddr => ALUResult;
             end if;
-        else
-            branchAddr => PCPlus4;
         end if;
         
-        
-        if RegSrcsig(0) = '1' then
+        --register input port 2 
+        if RegSrcsig(1) = '1' then
         	RA2 => RA3;
         else
         	RA2 => Instr(3 downto 0);
         end if;
         
-        if RegSrcsig(1) = '1' then
-        	RA1 => "1111";
+        --register input port 1
+        if RegSrcsig(0) = '1' then
+        	RA1 => "1110";
         else
         	RA1 => Instr(19 downto 16); 
         
+        --ALU input for second source
         if ALUSrcsig = '1' then
         	srcBsig => ExtImm;
         else
