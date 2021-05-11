@@ -50,10 +50,9 @@ process(all) begin
     immout <= (imm(21 downto 0) & 2b"0"); 
       
    else
-    immout <= 24b"0";
+    immout <= 32b"0";
    end if;
 
 end process;
 
 end;
-
