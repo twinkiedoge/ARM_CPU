@@ -78,7 +78,8 @@ port(
     ALUSrc : out std_logic;
     immSrc : out std_logic_vector(1 downto 0);
     ALUOp : out std_logic;
-    PCS : out std_logic
+    PCS : out std_logic;
+    regSrc : out std_logic_vector(1 downto 0);
 );
 end component;
 
@@ -154,6 +155,7 @@ signal ALUSrcsig: std_logic;
 signal ImmSrcsig: std_logic_vector(1 downto 0); 
 signal regWritesig: std_logic;
 signal memWritesig : std_logic;
+signal regSrcsig: std_logic_vector(1 downto 0);
  
 
 
@@ -172,7 +174,6 @@ ALUDecoderinst: ALUDecoder port map(func => funct, ALUOp => ALUOpsig, ALUControl
 mainDecoderinst: mainDecoder port map(func => funct, op => Opsig, Rd => Rdsig, memtoReg => MemtoRegsig, memW => memWsig, regW => regWsig, ALUSrc => ALUSrcsig, immSrc => ImmSrcsig, ALUOp => ALUOpsig, PCS =>PCSsig);
 
 
-RA1 => Instr(19 downto 16);
 RA3 => Instr(15 downto 12);
 immsig => Instr(23 downto 0);
 condsig => Instr(31 downto 28); 
@@ -195,11 +196,16 @@ process(all)
         end if;
         
         
-        if RegSrc = '1' then
+        if RegSrcsig(0) = '1' then
         	RA2 => RA3;
         else
         	RA2 => Instr(3 downto 0);
         end if;
+        
+        if RegSrcsig(1) = '1' then
+        	RA1 => "1111";
+        else
+        	RA1 => Instr(19 downto 16); 
         
         if ALUSrcsig = '1' then
         	srcBsig => ExtImm;
