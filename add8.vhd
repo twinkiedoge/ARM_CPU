@@ -1,6 +1,6 @@
 library IEEE;
 use IEEE.std_logic_1164.all;
-use IEE.numeric_std.all;
+use IEEE.numeric_std.all;
 
 entity add8 is
     port (
