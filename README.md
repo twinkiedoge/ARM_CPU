@@ -4,7 +4,7 @@ How to our run code:
 Current Status:
 - all of part 2 is functional
 - all of part 3 is functional
-- top module finished writing - hasn't been compiled, need updated immediate extension module
+- top module finished writing
 - part 4 _in progress_
 - part _haven't started_
 - no extra features?
