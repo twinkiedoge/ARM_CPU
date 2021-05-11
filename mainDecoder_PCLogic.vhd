@@ -13,7 +13,8 @@ port(
     regW : out std_logic;
     ALUSrc : out std_logic;
     immSrc : out std_logic_vector(1 downto 0);
-    PCSrc : out std_logic
+    ALUOp : out std_logic;
+    PCS : out std_logic
 );
 end mainDecoder;
 
@@ -28,16 +29,15 @@ begin
 	
         --LDR update
         memtoReg <= '1' when (op = "01" and func0 = '1') else '0'; --1: from memory, 0: from ALUresult
+        memW <= '1' when (op = "01" and func0 = '0') else '0';
         --STR update
         ALUSrc <= '0' when (op = "00" and func5 = '0') else '1'; -- 0: use Rd, 1: STR
-        
-        memW <= '1' when (op = "01" and func0 = '0') else '0';
         --register update
         regW <= '1' when (op = "00" or (op = "01" and func0 = '1')) else '0';
         --immediate extension update
         immSrc <= op;
-        
         --pc datapath update
-        PCSrc <= '1' when (Rd = "1110") else '0';
-            
+        PCS <= '1' when (Rd = "1110") else '0';
+        --ALUOp update 
+        ALUOp <= '1' when (op = "00") else '0';           
 end synth;
