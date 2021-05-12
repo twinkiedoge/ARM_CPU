@@ -31,7 +31,7 @@ signal inData : std_logic_vector(32 downto 0);
 
 signal Rport : std_logic_vector(31 downto 0);
 signal inputAddress : unsigned(3 downto 0);
-signal write : std_logic := '0';
+signal write : std_logic := 'X';
 signal rwSig : std_logic_vector(0 downto 0) := "1";
 signal readDummyData : std_logic_vector(32 downto 0) := "000000000000000000000000000000000";
 
@@ -41,11 +41,14 @@ s1 : sorter2 port map(inputAddress => inputAddress, inputData => inData, Rport =
     process (clk)
     begin
     	--write WD3 into the register with the address from AD3
-        if (rising_edge(clk) and WE3 = '1') then 
-		    write <= '1';
-	else 
-		write <= '0';
-        end if;
+       if (clk'event and clk = '1') then
+		   if (WE3 = '1') then
+				write <= '1';
+			else
+				write <= '0';
+			end if;
+
+		end if;
         
     end process;
     --sends information to sorter
