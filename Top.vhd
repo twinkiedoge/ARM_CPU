@@ -3,6 +3,10 @@ use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
 entity CPU is 
+	port(
+	reset: in std_logic;
+	clk: in std_logic
+	);
 end CPU;
 
 architecture synth of CPU is 
@@ -115,33 +119,28 @@ port(
 	write_data : in unsigned(31 downto 0);
 	read_data : out unsigned(31 downto 0)
 );
-component end;
-
-component branch is
-port(
-	PC8 : in std_logic_vector(31 downto 0);
-	instruction : in std_logic_vector(31 downto 0);
-	PC : out std_logic_vector(31 downto 0)
-);
 end component;
 
 
 --internal (specced by textbook)
 signal PCsig: unsigned(31 downto 0);
 signal Instr: std_logic_vector(31 downto 0);
-signal RA1: std_logic_vector(3 downto 0);
-signal RA2: std_logic_vector(3 downto 0);
-signal RA3: std_logic_vector(3 downto 0);
+signal RA1: unsigned(3 downto 0);
+signal RA2: unsigned(3 downto 0);
+signal RA3: unsigned(3 downto 0);
 signal immsig: std_logic_vector(23 downto 0);
 signal ExtImm: std_logic_vector(31 downto 0);
 signal RD1sig: std_logic_vector(31 downto 0);
 signal ALUResult: std_logic_vector(31 downto 0);
+signal ALUResultunsigned: unsigned(31 downto 0);
 signal read_datasig: unsigned(31 downto 0);
-signal PCPlus8: std_logic_vector(31 downto 0);
-signal WriteData: unsigned(31 downto 0);
+signal read_datasigvector: std_logic_vector(31 downto 0);
+signal WriteData: std_logic_vector(31 downto 0);
+signal WriteDataunsigned: unsigned(31 downto 0);
 signal ALUFlags: std_logic_vector(3 downto 0); 
 signal ALUControlsig: std_logic_vector(3 downto 0);
 signal Opsig: std_logic_vector(1 downto 0);
+signal Resultsig: std_logic_vector(31 downto 0);
 
 --internal (not specced by textbook)
 signal srcBsig: std_logic_vector(31 downto 0);
@@ -153,8 +152,10 @@ signal FlagWsig :  std_logic_vector(1 downto 0);
 signal memWsig : std_logic;
 signal regWsig : std_logic;
 signal PCSsig: std_logic;
-signal branchAddr : std_logic_vector(31 downto 0);
-signal reset : std_vector := '1';
+signal branchAddrsig : std_logic_vector(31 downto 0);
+signal Bsig: std_logic;
+
+
 
 --control
 signal PCSrcsig: std_logic;
@@ -168,32 +169,36 @@ signal regSrcsig: std_logic_vector(1 downto 0);
 
 
 
+signal PCPlus8unsigned: unsigned(31 downto 0);
+signal PCPlus8vector: std_logic_vector(31 downto 0);
 
 begin
 
-ALUinst: ALU port map(srcA <= RD1sig, srcB <= srcBsig, command <= ALUControlsig, result <= ALUResult, flags <= ALUFlags);
+ALUinst: ALU port map(srcA => RD1sig, srcB => srcBsig, command => ALUControlsig, result => ALUResult, flags => ALUFlags);
 
-programcounterinst: programcounter port map(clk <= clk, reset <= reset, branch <= B, branchAddr <= , pc <= PCsig);
+programcounterinst: programcounter port map(clk => clk, reset => reset, branch => Bsig, branchAddr => Resultsig, pc => PCsig);
 
-regfileinst: regfile port map(clk <=, A1 <= RA1, A2 <= , A3 <= RA3, WE3 <= regWritesig, R15 <= PCPlus8, RD1 <= RD1sig, RD2 <= WriteData, WD3 <= read_datasig);
+regfileinst: regfile port map(clk => CLK, A1 => RA1, A2 => RA2, A3 => RA3, WE3 => regWritesig, R15 => PCPlus8vector, RD1 => RD1sig, RD2 => WriteData, WD3 => Resultsig);
+--PCPlus8 std logic vecor
+progrominst: progrom port map(addr => PCsig, data => Instr); --assuming "instruction memory" in book is progrom
 
-progrominst: progrom port map(addr <= PCsig, data <= Instr); --assuming "instruction memory" in book is progrom
+immextendinst: immextend port map(imm => immsig, ImmSrc => ImmSrcsig, immout => ExtImm);
 
-immextendinst: immextend port map(imm <= immsig, ImmSrc <= ImmSrcsig, immout <= ExtImm);
+add8inst: add8 port map(x => PCsig, xplus8 => PCPlus8unsigned);
+--PCPlus8 out unsigned
+raminst: ram port map(clk => clk, write_enable => memWritesig, addr => ALUResultunsigned, write_data => WriteDataunsigned, read_data => read_datasig);
 
-add8inst: add8 port map(x <= PCsig, xplus8 <= PCPlus8);
+conditionalLogicinst: conditionalLogic port map(cond => condsig, ALUFlags => ALUFlags, clk => clk, FlagW => FlagWsig, memW => memWsig, regW => regWsig, PCS => PCSsig, PCSrc => PCSrcsig, memWrite => memWritesig, regWrite => regWritesig);
 
-raminst: ram port map(clk <=, write_enable <= memWritesig, addr <= ALUResult, write_data <= WriteData, read_data <= read_datasig);
+ALUDecoderinst: ALUDecoder port map(func => funct, ALUOp => ALUOpsig, ALUControl => ALUControlsig, FlagW => FlagWsig); 
 
-conditionalLogicinst: conditionalLogic port map(cond <= condsig, ALUFlags <= ALUFlags, clk <= clk, FlagW <= FlagWsig, memW <= memWsig, regW <= regWsig, PCS <= PCSsig, PCSrc <= PCSrcsig, memWrite <= memWritesig, regWrite <= regWritesig);
+mainDecoderinst: mainDecoder port map(func => funct, op => Opsig, Rd => Rdsig, memtoReg => MemtoRegsig, memW => memWsig, regW => regWsig, ALUSrc => ALUSrcsig, immSrc => ImmSrcsig, ALUOp => ALUOpsig, PCS =>PCSsig, B => Bsig);
 
-ALUDecoderinst: ALUDecoder port map(func <= funct, ALUOp <= ALUOpsig, ALUControl <= ALUControlsig, FlagW <= FlagWsig); 
-
-mainDecoderinst: mainDecoder port map(func <= funct, op <= Opsig, Rd <= Rdsig, memtoReg <= MemtoRegsig, memW <= memWsig, regW <= regWsig, ALUSrc <= ALUSrcsig, immSrc <= ImmSrcsig, ALUOp <= ALUOpsig, PCS <=PCSsig);
-
-branchinst : branch port map(PC8 <= PCPlus8, instruction <= Instruc, PC <= branchAddr);
-
-RA3 <= Instr(15 downto 12);
+read_datasigvector <= std_logic_vector(read_datasig);
+WriteDataunsigned <= unsigned(WriteData);
+ALUResultunsigned <= unsigned(ALUResult);
+PCPlus8vector <= std_logic_vector(PCPlus8unsigned);
+RA3 <= unsigned(Instr(15 downto 12));
 immsig <= Instr(23 downto 0);
 condsig <= Instr(31 downto 28); 
 funct <= Instr(25 downto 20);
@@ -203,29 +208,29 @@ Rdsig <= Instr(15 downto 12);
 --so far at figure 7.11
 process(all)
     begin
-    reset = '0'; --turns of pc reset at the begining
     	--program counter input
     	if PCSrcsig = '1' then
             if MemtoRegsig = '1' then
-            	branchAddr <= read_datasig;
+            	Resultsig <= read_datasigvector;
             else
-            	branchAddr <= ALUResult;
+            	Resultsig <= ALUResult;
             end if;
-        end if;
+		else
+		end if;
         
         --register input port 2 
         if RegSrcsig(1) = '1' then
         	RA2 <= RA3;
         else
-        	RA2 <= Instr(3 downto 0);
+        	RA2 <= unsigned(Instr(3 downto 0));
         end if;
         
         --register input port 1
         if RegSrcsig(0) = '1' then
         	RA1 <= "1110";
         else
-        	RA1 <= Instr(19 downto 16); 
-        
+        	RA1 <= unsigned(Instr(19 downto 16)); 
+        end if;
         --ALU input for second source
         if ALUSrcsig = '1' then
         	srcBsig <= ExtImm;
